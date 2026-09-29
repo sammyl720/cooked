@@ -3,9 +3,9 @@
 import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Camera, Check, ChevronLeft, CircleAlert, Copy, Download, GripVertical,
+  ArrowDown, ArrowUp, Camera, Check, CheckCircle2, ChevronLeft, CircleAlert, Copy, CreditCard, Download, GripVertical,
   Image as ImageIcon, Link2, LoaderCircle, LockKeyhole, MessageCircleMore, Plus, RotateCcw,
-  Send, Share2, ShieldCheck, Sparkles, Trash2, Upload, X,
+  Send, Share2, ShieldCheck, Sparkles, Trash2, Upload, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,16 +28,21 @@ type Screen = "input" | "review" | "processing" | "result" | "insufficient" | "s
 type Challenge = { index: number; label: string; mode: string; resultVersion: string; expiresAt: number };
 type OcrPayload = { text?: string; suggestedTurns?: DraftTurn[]; warnings?: string[]; error?: string };
 type ChallengePayload = { url?: string; error?: string };
+type BillingStatus = { enabled: boolean; credits: number | null; freeReads: number; packCredits: number; priceDisplay: string; checkoutEnabled: boolean; browserBound: true };
+type AnalyzePayload = AnalyzeResponse & { error?: string; code?: string; billing?: BillingStatus };
 
 const emit = (event: string, properties?: Record<string, string | number | boolean>) => {
   void fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event, properties }), keepalive: true });
 };
 
-function Header({ onReset }: { onReset?: () => void }) {
+function Header({ onReset, billing, onUpgrade }: { onReset?: () => void; billing: BillingStatus | null; onUpgrade: () => void }) {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
       <button className="brand-mark" onClick={onReset} aria-label="Cooked? home">Cooked<span>?</span></button>
-      <div className="rounded-full border border-ink/15 bg-white/75 px-3 py-1.5 text-sm font-bold shadow-sm">Dating <span className="text-muted-foreground">· MVP</span></div>
+      <div className="flex items-center gap-2">
+        {billing?.enabled && <button onClick={onUpgrade} className="rounded-full border-2 border-ink bg-lime px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_var(--ink)]"><Zap className="mr-1 inline size-3.5" />{billing.credits} {billing.credits === 1 ? "read" : "reads"}</button>}
+        <div className="rounded-full border border-ink/15 bg-white/75 px-3 py-1.5 text-sm font-bold shadow-sm">Dating <span className="text-muted-foreground">· MVP</span></div>
+      </div>
     </header>
   );
 }
@@ -78,6 +83,9 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
   const [challengeUrl, setChallengeUrl] = useState("");
   const [challengeBusy, setChallengeBusy] = useState(false);
   const [feedback, setFeedback] = useState<"right" | "off" | "">("");
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   const reset = useCallback(() => {
     controllerRef.current?.abort();
@@ -88,10 +96,51 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     setSharePreview(""); setChallengeUrl(""); setFeedback(""); setScreen("input");
   }, []);
 
+  const refreshBilling = useCallback(async () => {
+    const response = await fetch("/api/billing/status", { cache: "no-store" });
+    if (!response.ok) return null;
+    const status = await response.json() as BillingStatus;
+    setBilling(status);
+    return status;
+  }, []);
+
   useEffect(() => {
     emit("landing_view");
+    void refreshBilling();
     return () => { if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current); };
-  }, []);
+  }, [refreshBilling]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    const sessionId = params.get("session_id");
+    if (checkout === "canceled") {
+      toast.message("Checkout canceled — nothing was charged.");
+      window.history.replaceState({}, "", `${window.location.pathname}${window.location.hash}`);
+      return;
+    }
+    if (checkout !== "success" || !sessionId) return;
+    const confirm = async () => {
+      try {
+        const response = await fetch("/api/billing/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) });
+        const data = await response.json() as BillingStatus & { pending?: boolean; error?: string };
+        if (!response.ok) throw new Error(data.error || "We couldn’t confirm that purchase yet.");
+        if (data.pending) toast.message("Payment is still processing. Your reads will appear shortly.");
+        else {
+          setBilling(data);
+          setPaywallOpen(false);
+          toast.success(`${data.packCredits} reads added. Time to read the room.`);
+          emit("purchase_completed", { packCredits: data.packCredits });
+        }
+      } catch (caught) {
+        toast.error(caught instanceof Error ? caught.message : "We couldn’t confirm that purchase yet.");
+      } finally {
+        window.history.replaceState({}, "", `${window.location.pathname}${window.location.hash}`);
+        void refreshBilling();
+      }
+    };
+    void confirm();
+  }, [refreshBilling]);
 
   useEffect(() => {
     if (!challengeToken) return;
@@ -198,20 +247,42 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     setTurns(parsed.turns); setPlainMode(false); setNotice(parsed.confident ? "" : "Check every speaker assignment after editing the plain text.");
   };
 
+  const startCheckout = async () => {
+    if (!billing?.checkoutEnabled) return;
+    setCheckoutBusy(true);
+    emit("checkout_started", { packCredits: billing.packCredits });
+    try {
+      const response = await fetch("/api/billing/checkout", { method: "POST" });
+      const data = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !data.url) throw new Error(data.error || "Checkout couldn’t start.");
+      window.location.assign(data.url);
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Checkout couldn’t start.");
+      setCheckoutBusy(false);
+    }
+  };
+
   const analyze = async () => {
     setError("");
     const clean = turns.map((turn) => ({ speaker: turn.speaker, text: turn.text.trim() })).filter((turn) => turn.text);
     if (clean.length < 2 || clean.some((turn) => !turn.speaker)) { setError("Keep at least two non-empty messages and assign every one to Me or Them."); return; }
     if (!clean.some((turn) => turn.speaker === "me") || !clean.some((turn) => turn.speaker === "them")) { setError("Assign at least one message to Me and one to Them."); return; }
     if (clean.reduce((total, turn) => total + turn.text.length, 0) > MAX_CHARS) { setError("Trim the conversation to 6,000 characters."); return; }
+    if (billing?.enabled && billing.credits === 0) { setPaywallOpen(true); return; }
     const controller = new AbortController(); controllerRef.current = controller;
     setStage({ label: "Jev · Scoring four visible dimensions", progress: 72, operation: "jev" }); setScreen("processing");
     emit("analysis_started", { source });
     const started = Date.now();
     try {
       const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "dating", turns: clean }), signal: controller.signal });
-      const data = await response.json() as AnalyzeResponse & { error?: string };
+      const data = await response.json() as AnalyzePayload;
+      if (response.status === 402 && data.code === "credits_exhausted") {
+        if (data.billing) setBilling(data.billing);
+        setScreen("review"); setPaywallOpen(true);
+        return;
+      }
       if (!response.ok) throw new Error(data.error || "Analysis failed.");
+      void refreshBilling();
       if (data.status === "scored") {
         setResult(data.result); setScreen("result");
         emit("analysis_scored", { latencyBucket: Math.ceil((Date.now() - started) / 1000) * 1000, resultVersion: data.result.resultVersion, scoreBucket: Math.floor(data.result.index / 25) * 25 });
@@ -320,6 +391,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
             </TabsContent>
           </Tabs>
           {error && <p role="alert" className="mt-4 flex gap-2 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800"><CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}</p>}
+          {billing?.enabled && <button onClick={() => setPaywallOpen(true)} className="mt-5 flex w-full items-center justify-between gap-4 rounded-2xl border-2 border-ink bg-lime p-4 text-left shadow-[3px_3px_0_var(--ink)]"><span><span className="block text-xs font-black uppercase tracking-[.12em]">{billing.freeReads} reads free</span><span className="mt-1 block text-sm font-bold">Then {billing.packCredits} reads for {billing.priceDisplay}. No subscription.</span></span><CreditCard className="size-6 shrink-0" /></button>}
           <p className="mt-5 border-t border-ink/10 pt-4 text-xs leading-relaxed text-muted-foreground">We send reviewed text to TypeSafe AI for scoring. Screenshot extraction uses OpenAI when configured. Please submit only chats you’re comfortable sharing. <a className="font-bold text-ink underline" href="/privacy">Privacy details</a>.</p>
         </div>
         <div className="absolute -right-32 -top-20 size-72 rounded-full bg-lime blur-3xl" aria-hidden="true" /><div className="absolute -bottom-12 left-1/4 size-48 rounded-full bg-punch/20 blur-3xl" aria-hidden="true" />
@@ -362,7 +434,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
             </div>
             <Button variant="outline" className="mt-3 w-full border-2 border-dashed border-ink/30 font-black" disabled={turns.length >= 40} onClick={() => setTurns((current) => [...current, { speaker: null, text: "" }])}><Plus /> Add message</Button>
             {error && <p role="alert" className="mt-4 flex gap-2 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800"><CircleAlert className="mt-0.5 size-4 shrink-0" /> {error}</p>}
-            <div className="mt-7 rounded-2xl border-2 border-ink bg-white p-5 shadow-[5px_5px_0_var(--ink)]"><p className="flex gap-2 text-sm font-black"><ShieldCheck className="size-5 text-punch" /> Before you analyze</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">We send only the text above to TypeSafe AI. The model judges visible conversation signals, not hidden intentions or the actual odds someone likes you.</p><div className="mt-4 flex flex-col gap-3 sm:flex-row"><Button variant="outline" className="h-12 border-2 border-ink font-black" onClick={reset}><RotateCcw /> Start over</Button><Button className="h-12 flex-1 border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark" onClick={analyze}><Sparkles /> Analyze visible signals</Button></div></div>
+            <div className="mt-7 rounded-2xl border-2 border-ink bg-white p-5 shadow-[5px_5px_0_var(--ink)]"><p className="flex gap-2 text-sm font-black"><ShieldCheck className="size-5 text-punch" /> Before you analyze</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">We send only the text above to TypeSafe AI. The model judges visible conversation signals, not hidden intentions or the actual odds someone likes you.</p>{billing?.enabled && <p className="mt-3 flex items-center gap-2 rounded-xl bg-lime/50 px-3 py-2 text-sm font-black"><Zap className="size-4" /> {billing.credits} {billing.credits === 1 ? "read" : "reads"} left · only a scored result uses one</p>}<div className="mt-4 flex flex-col gap-3 sm:flex-row"><Button variant="outline" className="h-12 border-2 border-ink font-black" onClick={reset}><RotateCcw /> Start over</Button><Button className="h-12 flex-1 border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark" onClick={analyze}><Sparkles /> Analyze visible signals</Button></div></div>
           </div>
         </div>
         <Dialog open={plainMode} onOpenChange={setPlainMode}><DialogContent className="rounded-2xl border-2 border-ink bg-white"><DialogHeader><DialogTitle className="text-2xl font-black">Edit as plain text</DialogTitle><DialogDescription>Use one message per line with Me: or Them: prefixes. Unprefixed lines will need a speaker assignment.</DialogDescription></DialogHeader><Textarea value={plainDraft} onChange={(event) => setPlainDraft(event.target.value.slice(0, MAX_CHARS))} className="min-h-72 bg-canvas text-base" /><DialogFooter><DialogClose asChild><Button variant="outline" className="border-2 border-ink">Cancel</Button></DialogClose><Button className="bg-punch font-black text-white" onClick={applyPlain}>Apply text</Button></DialogFooter></DialogContent></Dialog>
@@ -402,7 +474,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     return null;
   })();
 
-  return <main className="min-h-screen overflow-hidden bg-background text-foreground"><Header onReset={reset} /><ChallengeStrip challenge={challenge} error={challengeError} />{content}<footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-ink/10 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><p>For fun. Based only on visible messages.</p><div className="flex gap-5"><a className="font-bold hover:text-ink hover:underline" href="/privacy">Privacy</a><span>More modes coming.</span></div></footer><Toaster richColors position="bottom-center" /></main>;
+  return <main className="min-h-screen overflow-hidden bg-background text-foreground"><Header onReset={reset} billing={billing} onUpgrade={() => setPaywallOpen(true)} /><ChallengeStrip challenge={challenge} error={challengeError} />{content}<footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-ink/10 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><p>For fun. Based only on visible messages.</p><div className="flex flex-wrap gap-5"><a className="font-bold hover:text-ink hover:underline" href="/privacy">Privacy</a><a className="font-bold hover:text-ink hover:underline" href="/terms">Terms</a>{billing?.enabled && <button className="font-bold hover:text-ink hover:underline" onClick={() => setPaywallOpen(true)}>Pricing</button>}<span>More modes coming.</span></div></footer><Dialog open={paywallOpen} onOpenChange={setPaywallOpen}><DialogContent className="overflow-hidden rounded-[2rem] border-2 border-ink bg-white p-0 shadow-[9px_9px_0_var(--ink)]"><div className="bg-lime px-6 py-5"><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em]"><Zap className="size-4" /> Keep reading the room</p><DialogTitle className="mt-3 text-3xl font-black tracking-tight">{billing?.packCredits ?? 25} more reads.</DialogTitle><p className="mt-1 text-2xl font-black text-punch">{billing?.priceDisplay ?? "$4.99"} <span className="text-sm text-ink">one time</span></p></div><div className="p-6"><DialogDescription className="text-base text-ink">No subscription and no surprise renewal. Your pack is added after Stripe confirms payment.</DialogDescription><div className="mt-5 space-y-3 text-sm font-bold"><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> One credit is used only when Cooked? returns a scored result.</p><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> Too-little-to-call results and technical failures don’t use a credit.</p><p className="flex gap-2"><LockKeyhole className="size-5 shrink-0 text-punch" /> No account: credits stay with this browser for up to one year.</p></div><p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">Because there’s no login, clearing this site’s cookies can remove access to remaining credits. Keep your Stripe receipt for purchase support.</p><Button className="mt-5 h-12 w-full border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark" onClick={startCheckout} disabled={checkoutBusy || !billing?.checkoutEnabled}>{checkoutBusy ? <LoaderCircle className="animate-spin" /> : <CreditCard />} {checkoutBusy ? "Opening secure checkout…" : `Get ${billing?.packCredits ?? 25} reads`}</Button><p className="mt-4 text-center text-xs text-muted-foreground">Secure checkout by Stripe. By purchasing, you agree to the <a href="/terms" className="font-bold text-ink underline">Terms</a> and <a href="/privacy" className="font-bold text-ink underline">Privacy Policy</a>.</p></div></DialogContent></Dialog><Toaster richColors position="bottom-center" /></main>;
 }
 
 async function renderShareCard(result: ScoredResult, url: string) {
