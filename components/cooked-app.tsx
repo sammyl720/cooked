@@ -482,8 +482,13 @@ async function renderShareCard(result: ScoredResult, url: string) {
   const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Canvas unavailable");
   ctx.fillStyle = "#18181a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#ff3d7f"; ctx.beginPath(); ctx.arc(1010, 80, 330, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#e8ff5b"; ctx.beginPath(); ctx.arc(-40, 1660, 250, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#ffffff"; ctx.font = "900 76px Arial"; ctx.fillText("Cooked", 90, 150); ctx.fillStyle = "#ff3d7f"; ctx.fillText("?", 350, 150);
+  ctx.fillStyle = "#e8ff5b"; ctx.beginPath(); ctx.arc(-190, 2050, 310, 0, Math.PI * 2); ctx.fill();
+  ctx.font = "900 76px Arial";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText("Cooked", 90, 150);
+  const brandWidth = ctx.measureText("Cooked").width;
+  ctx.fillStyle = "#ff3d7f";
+  ctx.fillText("?", 90 + brandWidth + 18, 150);
   ctx.fillStyle = "#e8ff5b"; ctx.font = "900 34px Arial"; ctx.fillText("VISIBLE-SIGNAL READ", 90, 300);
   ctx.fillStyle = "#ffffff"; ctx.font = "900 112px Arial";
   const lines = wrapText(ctx, result.label, 830); lines.forEach((line, index) => ctx.fillText(line, 90, 450 + index * 118));
@@ -495,7 +500,7 @@ async function renderShareCard(result: ScoredResult, url: string) {
   ctx.fillStyle = "#ffffff"; ctx.font = "700 49px Arial"; wrapText(ctx, result.phrase, 760).slice(0, 3).forEach((line, index) => ctx.fillText(line, 145, numberY + 580 + index * 62));
   const qr = await QRCode.toDataURL(url, { width: 240, margin: 2, color: { dark: "#18181a", light: "#ffffff" } });
   const image = await loadImage(qr); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.roundRect(750, 1535, 250, 250, 26); ctx.fill(); ctx.drawImage(image, 765, 1550, 220, 220);
-  ctx.fillStyle = "rgba(255,255,255,.74)"; ctx.font = "700 28px Arial"; ctx.fillText("Try yours at Cooked?", 90, 1630); ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.font = "600 25px Arial"; ctx.fillText("For fun · based on visible messages", 90, 1760);
+  ctx.fillStyle = "rgba(255,255,255,.86)"; ctx.font = "700 28px Arial"; ctx.fillText("Try yours at Cooked?", 90, 1630); ctx.fillStyle = "rgba(255,255,255,.62)"; ctx.font = "600 25px Arial"; ctx.fillText("For fun · based on visible messages", 90, 1760);
   return canvas.toDataURL("image/png");
 }
 
