@@ -2,6 +2,60 @@ import type { DraftTurn } from "./domain";
 
 export type OcrResult = { text: string; suggestedTurns: DraftTurn[]; warnings: string[] };
 
+type OcrSpeaker = "me" | "them" | "unknown";
+
+type OcrTurn = {
+  speaker?: unknown;
+  text?: unknown;
+  confidence?: unknown;
+  evidence?: unknown;
+};
+
+const LABELED_SPEAKER = /^(me|myself|you|them|they|match|other)\s*[:\-–—]\s*(.+)$/is;
+
+function labeledTurn(text: string) {
+  const match = text.match(LABELED_SPEAKER);
+  if (!match) return null;
+  return {
+    speaker: /^(me|myself|you)$/i.test(match[1]) ? "me" as const : "them" as const,
+    text: match[2].trim(),
+  };
+}
+
+function normalizeSpeaker(value: unknown): OcrSpeaker {
+  return value === "me" || value === "them" ? value : "unknown";
+}
+
+export function parseOcrOutput(value: string): OcrResult {
+  const cleaned = value.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+  const parsed = JSON.parse(cleaned) as { turns?: unknown; warnings?: unknown };
+  const modelTurns = Array.isArray(parsed.turns) ? parsed.turns.slice(0, 40) : [];
+  const suggestedTurns: DraftTurn[] = modelTurns.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const turn = candidate as OcrTurn;
+    if (typeof turn.text !== "string" || !turn.text.trim()) return [];
+    const rawText = turn.text.trim();
+    const labeled = labeledTurn(rawText);
+    const speaker = labeled?.speaker ?? normalizeSpeaker(turn.speaker);
+    const text = (labeled?.text ?? rawText).slice(0, 2_000);
+    if (!text) return [];
+    return [{ speaker: speaker === "unknown" ? null : speaker, text }];
+  });
+  if (suggestedTurns.length < 1) throw new Error("OCR_EMPTY");
+
+  const warnings = Array.isArray(parsed.warnings)
+    ? parsed.warnings.filter((warning): warning is string => typeof warning === "string" && Boolean(warning.trim())).map((warning) => warning.trim()).slice(0, 3)
+    : [];
+  const unassigned = suggestedTurns.filter((turn) => turn.speaker === null).length;
+  if (unassigned > 0 && warnings.length < 3) warnings.push(`${unassigned} ${unassigned === 1 ? "message needs" : "messages need"} a speaker check.`);
+
+  return {
+    text: suggestedTurns.map((turn) => `${turn.speaker === "me" ? "Me: " : turn.speaker === "them" ? "Them: " : ""}${turn.text}`).join("\n").slice(0, 6_000),
+    suggestedTurns,
+    warnings,
+  };
+}
+
 function base64(bytes: Uint8Array) {
   let binary = "";
   const chunk = 0x8000;
@@ -30,11 +84,48 @@ export class OpenAIOcrProvider {
       model: process.env.OCR_MODEL?.trim() || "gpt-6-astra",
       store: false,
       max_output_tokens: 2_000,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "chat_screenshot_transcript",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              turns: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    speaker: { type: "string", enum: ["me", "them", "unknown"] },
+                    text: { type: "string" },
+                    confidence: { type: "string", enum: ["high", "medium", "low"] },
+                    evidence: { type: "string", enum: ["explicit_label", "bubble_position", "visual_grouping", "unknown"] },
+                  },
+                  required: ["speaker", "text", "confidence", "evidence"],
+                },
+              },
+              warnings: { type: "array", items: { type: "string" } },
+            },
+            required: ["turns", "warnings"],
+          },
+        },
+      },
       input: [{
         role: "user",
         content: [
-          { type: "input_text", text: "Extract only the ordered chat bubble messages from this two-person dating-chat screenshot. Ignore names, avatars, timestamps, read receipts, reactions, UI labels, and status bars. Preserve message wording. Return only JSON: {\"text\":\"messages separated by newlines\",\"turns\":[{\"text\":\"message\"}],\"warnings\":[\"brief uncertainty if any\"]}. Do not guess which person is Me; do not include a speaker field." },
-          { type: "input_image", image_url: `data:${mime};base64,${base64(bytes)}`, detail: "high" },
+          { type: "input_text", text: `Extract the ordered messages from this two-person chat screenshot and identify who sent each one.
+
+Speaker rules, in priority order:
+1. Explicit transcript labels win: Me/Myself/You means \"me\"; Them/They/Match/Other means \"them\". Remove the label from the message text.
+2. In a messaging-app screenshot, outgoing bubbles on the RIGHT are \"me\" and incoming bubbles on the LEFT are \"them\". Use bubble edges, tails, color grouping, and column alignment—not the wording—to determine the side.
+3. A continuation bubble may inherit the speaker only when it is visually grouped in the same side/column.
+4. If there is no explicit label or reliable visual-side evidence, use \"unknown\". Never infer a speaker from what the message says.
+
+Keep the visual reading order. Preserve wording and emoji. Ignore contact names, avatars, timestamps, date separators, read receipts, reactions, typing indicators, composer text, navigation, and status bars. Put only actual message content in turns. Keep warnings empty unless part of the image is unreadable or speaker placement is genuinely ambiguous.` },
+          { type: "input_image", image_url: `data:${mime};base64,${base64(bytes)}`, detail: "original" },
         ],
       }],
     };
@@ -52,16 +143,6 @@ export class OpenAIOcrProvider {
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
     if (!response?.ok) throw new Error("OCR_UPSTREAM_FAILED");
-    const text = responseText(await response.json()).trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
-    const parsed = JSON.parse(text) as { text?: unknown; turns?: unknown; warnings?: unknown };
-    const suggestedTurns: DraftTurn[] = Array.isArray(parsed.turns)
-      ? parsed.turns.slice(0, 40).flatMap((turn) => turn && typeof turn === "object" && typeof (turn as { text?: unknown }).text === "string" && (turn as { text: string }).text.trim() ? [{ speaker: null, text: (turn as { text: string }).text.trim() }] : [])
-      : [];
-    if (suggestedTurns.length < 1) throw new Error("OCR_EMPTY");
-    return {
-      text: typeof parsed.text === "string" ? parsed.text.slice(0, 6_000) : suggestedTurns.map((turn) => turn.text).join("\n"),
-      suggestedTurns,
-      warnings: Array.isArray(parsed.warnings) ? parsed.warnings.filter((warning): warning is string => typeof warning === "string").slice(0, 3) : [],
-    };
+    return parseOcrOutput(responseText(await response.json()));
   }
 }

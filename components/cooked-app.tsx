@@ -214,9 +214,16 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
       const response = await fetch("/api/ocr", { method: "POST", body: form, signal: controller.signal });
       const data = await response.json() as OcrPayload;
       if (!response.ok) throw new Error(data.error || "We couldn’t extract that screenshot.");
-      setTurns(data.suggestedTurns || []);
+      const suggestedTurns = data.suggestedTurns || [];
+      const unassigned = suggestedTurns.filter((turn) => turn.speaker === null).length;
+      setTurns(suggestedTurns);
       setRawText(data.text || "");
-      setNotice(["Assign Me or Them to every extracted message.", ...(data.warnings || [])].join(" "));
+      setNotice([
+        unassigned === 0
+          ? "Speakers were assigned from labels and bubble position. Give them a quick check before analysis."
+          : `Speakers were assigned where the screenshot was clear. ${unassigned} ${unassigned === 1 ? "message still needs" : "messages still need"} your input.`,
+        ...(data.warnings || []),
+      ].join(" "));
       emit("ocr_completed", { success: true, latencyBucket: Math.ceil((Date.now() - started) / 1000) * 1000 });
       setScreen("review");
     } catch (caught) {
