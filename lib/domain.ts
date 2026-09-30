@@ -4,7 +4,7 @@ export type AnalysisInput = { mode: "dating"; turns: Turn[] };
 
 export const VIBES = ["warm", "friendly", "one_sided", "dry", "mixed", "unclear"] as const;
 export type Vibe = (typeof VIBES)[number];
-export type CookedLabel = "You're good" | "Mixed signals" | "It's complicated" | "Cooked";
+export type CookedLabel = "You're good" | "Mixed signals" | "It's complicated" | "Not looking good";
 export type DimensionKey = "reciprocity" | "warmth" | "follow_through" | "clarity";
 
 export type Dimension = {

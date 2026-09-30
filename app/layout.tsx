@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cooked? — Read the room",
-  description: "A playful read of the visible signals in a dating chat.",
+  title: "The Chat Receipt — Read the signals",
+  description: "Drop a dating chat and get a playful receipt for the visible signals.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

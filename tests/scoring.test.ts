@@ -34,7 +34,7 @@ test("cooked_v1 formula and label boundaries are stable", () => {
   assert.equal(labelFor(24), "You're good");
   assert.equal(labelFor(25), "Mixed signals");
   assert.equal(labelFor(50), "It's complicated");
-  assert.equal(labelFor(75), "Cooked");
+  assert.equal(labelFor(75), "Not looking good");
 });
 
 test("explicit plan and maybe-sometime phrasing stay distinct", () => {

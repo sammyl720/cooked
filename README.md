@@ -1,13 +1,13 @@
-# Cooked?
+# The Chat Receipt
 
-Cooked? is a mobile-first dating-chat game: paste a two-person conversation or upload a screenshot, verify every message and speaker, then get a bounded read of the visible signals. It never treats the score as odds of attraction and never puts chat content in a share card or challenge record.
+The Chat Receipt is a mobile-first dating-chat game: paste a two-person conversation or upload a screenshot, verify every message and speaker, then get a bounded read of the visible signals. It never treats the score as odds of attraction and never puts chat content in a share card or challenge record.
 
 ## What is included
 
 - Conservative paste parsing and an editable, reorderable `Me` / `Them` review step
 - PNG, JPEG, and WebP validation plus an optional OpenAI vision OCR adapter
 - TypeSafe AI Jev evaluation using `@typesafe-ai/sdk` and `jev-latest`
-- Versioned `cooked_v1` scoring, deterministic phrases, runtime response validation, and tests
+- Versioned `cooked_v1` scoring retained for challenge compatibility, deterministic phrases, runtime response validation, and tests
 - Insufficient-evidence and safety suppression paths
 - 1080 × 1920 transcript-free PNG cards with native share/download fallbacks
 - Signed, 30-day, score-only challenges backed by D1
@@ -54,7 +54,7 @@ Provider keys stay server-side. Raw messages and screenshots are never written t
 
 The paid path is fail-closed and hidden until every prerequisite is present. It uses a one-time read pack so the core flow remains account-free. Credits are attached to an HTTP-only browser cookie and stored in D1; only scored results consume one credit.
 
-1. In Stripe, create a product named `Cooked? read pack` and a one-time USD Price for the amount shown in `BILLING_PRICE_DISPLAY`.
+1. In Stripe, create a product named `The Chat Receipt read pack` and a one-time USD Price for the amount shown in `BILLING_PRICE_DISPLAY`.
 2. Register `https://<your-site>/api/billing/webhook` in Stripe for `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
 3. Add `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, the matching pack values, and `BILLING_ENABLED=true` to the hosted environment. `TYPESAFE_API_KEY` must also be configured; demo scoring is never sold.
 4. Configure Stripe’s public business details, support contact, statement descriptor, receipts, refund policy, and tax behavior before accepting live payments.

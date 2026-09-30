@@ -56,15 +56,15 @@ export function labelFor(index: number): CookedLabel {
   if (index <= 24) return "You're good";
   if (index <= 49) return "Mixed signals";
   if (index <= 74) return "It's complicated";
-  return "Cooked";
+  return "Not looking good";
 }
 
 export function phraseFor(label: CookedLabel, vibe: Vibe, nextStep: number) {
-  if (nextStep >= .68 && label !== "Cooked") return "Okay, there is an actual plan.";
+  if (nextStep >= .68 && label !== "Not looking good") return "Okay, there is an actual plan.";
   if (vibe === "one_sided" || vibe === "dry") return "You're carrying the conversation on your back.";
   if ((vibe === "warm" || vibe === "friendly") && nextStep < .45) return "The vibe is warm, but the plan is still vague.";
   if (vibe === "mixed") return "There’s a signal here — it just keeps changing lanes.";
-  if (label === "Cooked") return "The visible effort is doing a disappearing act.";
+  if (label === "Not looking good") return "The visible effort is doing a disappearing act.";
   if (label === "You're good") return "The room is reading pretty well.";
   return "The messages leave some room for interpretation.";
 }

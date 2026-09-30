@@ -65,7 +65,7 @@ html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
 button, a, textarea, input, select { outline-offset: 3px; }
 button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--punch); }
-.brand-mark { color: var(--ink); font-size: 1.65rem; font-weight: 950; letter-spacing: -.08em; text-decoration: none; }
+.brand-mark { color: var(--ink); font-size: 1.45rem; font-weight: 950; letter-spacing: -.055em; text-decoration: none; }
 .brand-mark span { color: var(--punch); }
 .eyebrow { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 999px; background: rgb(255 255 255 / .72); padding: .45rem .7rem; font-size: .78rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .eyebrow span { color: var(--punch); }

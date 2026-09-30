@@ -38,7 +38,7 @@ const emit = (event: string, properties?: Record<string, string | number | boole
 function Header({ onReset, billing, onUpgrade }: { onReset?: () => void; billing: BillingStatus | null; onUpgrade: () => void }) {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-      <button className="brand-mark" onClick={onReset} aria-label="Cooked? home">Cooked<span>?</span></button>
+      <button className="brand-mark" onClick={onReset} aria-label="The Chat Receipt home">The Chat <span>Receipt</span></button>
       <div className="flex items-center gap-2">
         {billing?.enabled && <button onClick={onUpgrade} className="rounded-full border-2 border-ink bg-lime px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_var(--ink)]"><Zap className="mr-1 inline size-3.5" />{billing.credits} {billing.credits === 1 ? "read" : "reads"}</button>}
         <div className="rounded-full border border-ink/15 bg-white/75 px-3 py-1.5 text-sm font-bold shadow-sm">Dating <span className="text-muted-foreground">· MVP</span></div>
@@ -49,13 +49,14 @@ function Header({ onReset, billing, onUpgrade }: { onReset?: () => void; billing
 
 function ChallengeStrip({ challenge, error }: { challenge: Challenge | null; error: string }) {
   if (!challenge && !error) return null;
+  const challengeLabel = challenge?.label === "Cooked" ? "Not looking good" : challenge?.label;
   return (
     <div className={`mx-auto mb-4 flex w-full max-w-6xl items-center justify-between gap-4 rounded-2xl border-2 px-5 py-4 sm:px-6 ${error ? "border-ink/20 bg-white" : "border-ink bg-lime shadow-[4px_4px_0_var(--ink)]"}`}>
       <div>
         <p className="text-xs font-black uppercase tracking-[.12em]">{error ? "Challenge unavailable" : "You’ve been challenged"}</p>
-        <p className="mt-1 font-bold">{error || <>Can you beat a Cooked Index of <span className="font-black">{challenge?.index}/100</span>? Lower wins.</>}</p>
+        <p className="mt-1 font-bold">{error || <>Can you beat a Mixed-Signal Index of <span className="font-black">{challenge?.index}/100</span>? Lower wins.</>}</p>
       </div>
-      {!error && <span className="hidden rounded-full bg-ink px-4 py-2 text-sm font-black text-white sm:block">{challenge?.label}</span>}
+      {!error && <span className="hidden rounded-full bg-ink px-4 py-2 text-sm font-black text-white sm:block">{challengeLabel}</span>}
     </div>
   );
 }
@@ -163,7 +164,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
       void Promise.resolve(context.registerTool({
         name: "stage_dating_chat",
         title: "Stage dating chat",
-        description: "Put a two-person dating chat into the visible Cooked? review editor. This does not analyze or send it.",
+        description: "Put a two-person dating chat into The Chat Receipt review editor. This does not analyze or send it.",
         inputSchema: { type: "object", properties: { text: { type: "string", maxLength: MAX_CHARS } }, required: ["text"], additionalProperties: false },
         annotations: { readOnlyHint: false, untrustedContentHint: true },
         execute(input) {
@@ -312,16 +313,16 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
   const downloadCard = async () => {
     try {
       const blob = await getShareBlob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
-      anchor.href = url; anchor.download = `cooked-index-${result?.index ?? "result"}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 2_000);
+      anchor.href = url; anchor.download = `chat-receipt-${result?.index ?? "result"}.png`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 2_000);
       emit("share_card_downloaded", { resultVersion: result?.resultVersion || "cooked_v1" });
     } catch { toast.error("Couldn’t save the card. Try again."); }
   };
 
   const shareCard = async () => {
     try {
-      const blob = await getShareBlob(); const file = new File([blob], "cooked-index.png", { type: "image/png" });
+      const blob = await getShareBlob(); const file = new File([blob], "chat-receipt.png", { type: "image/png" });
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-        await navigator.share({ title: "My Cooked Index", text: challengeUrl ? "Can you beat my Cooked Index? Lower wins." : "Read the room with Cooked?", url: challengeUrl || window.location.origin, files: [file] });
+        await navigator.share({ title: "My Chat Receipt", text: challengeUrl ? "Can you beat my Mixed-Signal Index? Lower wins." : "Get your receipt with The Chat Receipt.", url: challengeUrl || window.location.origin, files: [file] });
         emit("native_share_opened", { resultVersion: result?.resultVersion || "cooked_v1" });
       } else await downloadCard();
     } catch (caught) { if (!(caught instanceof DOMException && caught.name === "AbortError")) toast.error("Sharing didn’t open. You can download the card instead."); }
@@ -352,9 +353,9 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     if (screen === "input") return (
       <section className="relative mx-auto grid w-full max-w-6xl gap-8 px-5 pb-16 pt-4 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-12">
         <div className="relative z-10 max-w-xl">
-          <p className="eyebrow"><span aria-hidden="true">●</span> Visible signals. Zero mind reading.</p>
-          <h1 className="mt-5 text-[clamp(4.7rem,17vw,9.5rem)] font-black uppercase leading-[.72] tracking-[-.09em]">Cooked<span className="text-punch">?</span></h1>
-          <p className="mt-8 max-w-lg text-xl font-semibold leading-snug sm:text-2xl">Drop the chat. Check the text. Get a playful read of the conversation you can actually see.</p>
+          <p className="eyebrow"><span aria-hidden="true">●</span> Visible signals. No mind reading.</p>
+          <h1 className="mt-5 text-[clamp(4rem,14vw,8rem)] font-black uppercase leading-[.76] tracking-[-.075em]"><span className="block">The Chat</span><span className="block text-punch">Receipt.</span></h1>
+          <p className="mt-8 max-w-lg text-xl font-semibold leading-snug sm:text-2xl">Drop the chat. Check the text. Get a playful receipt for the conversation you can actually see.</p>
           <div className="mt-7 flex items-center gap-2 text-sm font-medium text-muted-foreground"><LockKeyhole className="size-4" aria-hidden="true" /> No account. No transcript in your share card.</div>
           <div className="mt-8 hidden rotate-[-2deg] rounded-2xl border-2 border-ink bg-lime p-5 shadow-[5px_5px_0_var(--ink)] sm:block">
             <p className="text-xs font-black uppercase tracking-[.14em]">Example result</p>
@@ -456,7 +457,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
           <div>
             <article className="result-card relative overflow-hidden rounded-[2.25rem] border-2 border-ink bg-ink p-6 text-white shadow-[10px_10px_0_var(--punch)] sm:p-9" aria-labelledby="result-heading">
               <div className="absolute -right-20 -top-20 size-56 rounded-full bg-punch opacity-90" aria-hidden="true" /><div className="absolute -left-10 bottom-24 size-32 rounded-full bg-lime/20 blur-2xl" aria-hidden="true" />
-              <div className="relative"><p className="text-xs font-black uppercase tracking-[.18em] text-lime">Your visible-signal read</p><h1 id="result-heading" className="mt-4 max-w-lg text-5xl font-black leading-[.9] tracking-[-.055em] sm:text-7xl">{result.label}</h1><div className="mt-8 flex items-baseline gap-2"><span className="text-[clamp(6rem,23vw,10rem)] font-black leading-none tracking-[-.09em]">{result.index}</span><span className="text-2xl font-black text-white/55">/100</span></div><p className="-mt-1 text-sm font-black uppercase tracking-[.14em] text-white/60">Cooked Index</p><p className="mt-6 max-w-lg border-l-4 border-lime pl-4 text-xl font-bold leading-snug">{result.phrase}</p></div>
+              <div className="relative"><p className="text-xs font-black uppercase tracking-[.18em] text-lime">Your chat receipt</p><h1 id="result-heading" className="mt-4 max-w-lg text-5xl font-black leading-[.9] tracking-[-.055em] sm:text-7xl">{result.label}</h1><div className="mt-8 flex items-baseline gap-2"><span className="text-[clamp(6rem,23vw,10rem)] font-black leading-none tracking-[-.09em]">{result.index}</span><span className="text-2xl font-black text-white/55">/100</span></div><p className="-mt-1 text-sm font-black uppercase tracking-[.14em] text-white/60">Mixed-Signal Index</p><p className="mt-6 max-w-lg border-l-4 border-lime pl-4 text-xl font-bold leading-snug">{result.phrase}</p></div>
               <div className="relative mt-9 space-y-5">{result.dimensions.map((dimension) => <div key={dimension.key}><div className="mb-2 flex items-center justify-between text-sm font-bold"><span>{dimension.label}</span><span>{dimension.value.toFixed(1)}/4</span></div><div className="h-3 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-lime" style={{ width: `${dimension.value / 4 * 100}%` }} /></div></div>)}</div>
               <p className="relative mt-8 text-sm text-white/60">{result.disclaimer}</p>{result.demo && <p className="relative mt-4 rounded-xl border border-lime/40 bg-lime/10 p-3 text-sm font-bold text-lime">Demo scoring is active. Add TYPESAFE_API_KEY for a live Jev result.</p>}
             </article>
@@ -465,7 +466,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
             <div className="mt-5 flex items-center gap-3 text-sm"><span className="font-bold text-muted-foreground">Feels right?</span><Button size="sm" variant={feedback === "right" ? "secondary" : "outline"} onClick={() => feedbackResult("right")}><Check /> Feels right</Button><Button size="sm" variant={feedback === "off" ? "secondary" : "outline"} onClick={() => feedbackResult("off")}><X /> Way off</Button></div>
           </div>
           <aside>
-            <div className="rounded-[2rem] border-2 border-ink bg-white p-5 shadow-[8px_8px_0_var(--ink)]"><div className="flex items-center justify-between"><div><p className="font-black uppercase tracking-tight">Share preview</p><p className="text-sm text-muted-foreground">1080 × 1920 · no chat content</p></div><ShieldCheck className="size-6 text-punch" /></div>{sharePreview ? <img src={sharePreview} alt={`Share card reading ${result.label}, Cooked Index ${result.index} out of 100`} className="mx-auto mt-5 max-h-[510px] rounded-2xl border border-ink/10 object-contain shadow-lg" /> : <div className="mx-auto mt-5 aspect-[9/16] max-h-[510px] animate-pulse rounded-2xl bg-canvas motion-reduce:animate-none" />}</div>
+            <div className="rounded-[2rem] border-2 border-ink bg-white p-5 shadow-[8px_8px_0_var(--ink)]"><div className="flex items-center justify-between"><div><p className="font-black uppercase tracking-tight">Share preview</p><p className="text-sm text-muted-foreground">1080 × 1920 · no chat content</p></div><ShieldCheck className="size-6 text-punch" /></div>{sharePreview ? <img src={sharePreview} alt={`Share card reading ${result.label}, Mixed-Signal Index ${result.index} out of 100`} className="mx-auto mt-5 max-h-[510px] rounded-2xl border border-ink/10 object-contain shadow-lg" /> : <div className="mx-auto mt-5 aspect-[9/16] max-h-[510px] animate-pulse rounded-2xl bg-canvas motion-reduce:animate-none" />}</div>
             <Dialog><DialogTrigger asChild><Button className="mt-5 h-12 w-full border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark"><Link2 /> Challenge a friend</Button></DialogTrigger><DialogContent className="rounded-2xl border-2 border-ink bg-white"><DialogHeader><DialogTitle className="text-2xl font-black">Can they beat {result.index}?</DialogTitle><DialogDescription>Lower wins. Anyone with the unguessable link can see your score, label, mode, and result version — never your transcript.</DialogDescription></DialogHeader>{challengeUrl ? <div className="flex gap-2"><input readOnly value={challengeUrl} aria-label="Challenge link" className="min-w-0 flex-1 rounded-xl border-2 border-ink/20 bg-canvas px-3 text-sm" /><Button aria-label="Copy challenge link" onClick={copyChallenge}><Copy /></Button></div> : <Button className="h-12 bg-punch font-black text-white" disabled={challengeBusy} onClick={createChallenge}>{challengeBusy ? <LoaderCircle className="animate-spin" /> : <Send />} Create score-only link</Button>}<DialogFooter showCloseButton /></DialogContent></Dialog>
           </aside>
         </div>
@@ -474,7 +475,7 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     return null;
   })();
 
-  return <main className="min-h-screen overflow-hidden bg-background text-foreground"><Header onReset={reset} billing={billing} onUpgrade={() => setPaywallOpen(true)} /><ChallengeStrip challenge={challenge} error={challengeError} />{content}<footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-ink/10 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><p>For fun. Based only on visible messages.</p><div className="flex flex-wrap gap-5"><a className="font-bold hover:text-ink hover:underline" href="/privacy">Privacy</a><a className="font-bold hover:text-ink hover:underline" href="/terms">Terms</a>{billing?.enabled && <button className="font-bold hover:text-ink hover:underline" onClick={() => setPaywallOpen(true)}>Pricing</button>}<span>More modes coming.</span></div></footer><Dialog open={paywallOpen} onOpenChange={setPaywallOpen}><DialogContent className="overflow-hidden rounded-[2rem] border-2 border-ink bg-white p-0 shadow-[9px_9px_0_var(--ink)]"><div className="bg-lime px-6 py-5"><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em]"><Zap className="size-4" /> Keep reading the room</p><DialogTitle className="mt-3 text-3xl font-black tracking-tight">{billing?.packCredits ?? 25} more reads.</DialogTitle><p className="mt-1 text-2xl font-black text-punch">{billing?.priceDisplay ?? "$4.99"} <span className="text-sm text-ink">one time</span></p></div><div className="p-6"><DialogDescription className="text-base text-ink">No subscription and no surprise renewal. Your pack is added after Stripe confirms payment.</DialogDescription><div className="mt-5 space-y-3 text-sm font-bold"><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> One credit is used only when Cooked? returns a scored result.</p><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> Too-little-to-call results and technical failures don’t use a credit.</p><p className="flex gap-2"><LockKeyhole className="size-5 shrink-0 text-punch" /> No account: credits stay with this browser for up to one year.</p></div><p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">Because there’s no login, clearing this site’s cookies can remove access to remaining credits. Keep your Stripe receipt for purchase support.</p><Button className="mt-5 h-12 w-full border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark" onClick={startCheckout} disabled={checkoutBusy || !billing?.checkoutEnabled}>{checkoutBusy ? <LoaderCircle className="animate-spin" /> : <CreditCard />} {checkoutBusy ? "Opening secure checkout…" : `Get ${billing?.packCredits ?? 25} reads`}</Button><p className="mt-4 text-center text-xs text-muted-foreground">Secure checkout by Stripe. By purchasing, you agree to the <a href="/terms" className="font-bold text-ink underline">Terms</a> and <a href="/privacy" className="font-bold text-ink underline">Privacy Policy</a>.</p></div></DialogContent></Dialog><Toaster richColors position="bottom-center" /></main>;
+  return <main className="min-h-screen overflow-hidden bg-background text-foreground"><Header onReset={reset} billing={billing} onUpgrade={() => setPaywallOpen(true)} /><ChallengeStrip challenge={challenge} error={challengeError} />{content}<footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-ink/10 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><p>For fun. Based only on visible messages.</p><div className="flex flex-wrap gap-5"><a className="font-bold hover:text-ink hover:underline" href="/privacy">Privacy</a><a className="font-bold hover:text-ink hover:underline" href="/terms">Terms</a>{billing?.enabled && <button className="font-bold hover:text-ink hover:underline" onClick={() => setPaywallOpen(true)}>Pricing</button>}<span>More modes coming.</span></div></footer><Dialog open={paywallOpen} onOpenChange={setPaywallOpen}><DialogContent className="overflow-hidden rounded-[2rem] border-2 border-ink bg-white p-0 shadow-[9px_9px_0_var(--ink)]"><div className="bg-lime px-6 py-5"><p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em]"><Zap className="size-4" /> Keep reading the signals</p><DialogTitle className="mt-3 text-3xl font-black tracking-tight">{billing?.packCredits ?? 25} more reads.</DialogTitle><p className="mt-1 text-2xl font-black text-punch">{billing?.priceDisplay ?? "$4.99"} <span className="text-sm text-ink">one time</span></p></div><div className="p-6"><DialogDescription className="text-base text-ink">No subscription and no surprise renewal. Your pack is added after Stripe confirms payment.</DialogDescription><div className="mt-5 space-y-3 text-sm font-bold"><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> One credit is used only when The Chat Receipt returns a scored result.</p><p className="flex gap-2"><CheckCircle2 className="size-5 shrink-0 text-punch" /> Too-little-to-call results and technical failures don’t use a credit.</p><p className="flex gap-2"><LockKeyhole className="size-5 shrink-0 text-punch" /> No account: credits stay with this browser for up to one year.</p></div><p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">Because there’s no login, clearing this site’s cookies can remove access to remaining credits. Keep your Stripe receipt for purchase support.</p><Button className="mt-5 h-12 w-full border-2 border-ink bg-punch font-black text-white shadow-[3px_3px_0_var(--ink)] hover:bg-punch-dark" onClick={startCheckout} disabled={checkoutBusy || !billing?.checkoutEnabled}>{checkoutBusy ? <LoaderCircle className="animate-spin" /> : <CreditCard />} {checkoutBusy ? "Opening secure checkout…" : `Get ${billing?.packCredits ?? 25} reads`}</Button><p className="mt-4 text-center text-xs text-muted-foreground">Secure checkout by Stripe. By purchasing, you agree to the <a href="/terms" className="font-bold text-ink underline">Terms</a> and <a href="/privacy" className="font-bold text-ink underline">Privacy Policy</a>.</p></div></DialogContent></Dialog><Toaster richColors position="bottom-center" /></main>;
 }
 
 async function renderShareCard(result: ScoredResult, url: string) {
@@ -483,24 +484,24 @@ async function renderShareCard(result: ScoredResult, url: string) {
   ctx.fillStyle = "#18181a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#ff3d7f"; ctx.beginPath(); ctx.arc(1010, 80, 330, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#e8ff5b"; ctx.beginPath(); ctx.arc(-190, 2050, 310, 0, Math.PI * 2); ctx.fill();
-  ctx.font = "900 76px Arial";
+  ctx.font = "900 52px Arial";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText("Cooked", 90, 150);
-  const brandWidth = ctx.measureText("Cooked").width;
+  ctx.fillText("THE CHAT", 90, 150);
+  const brandWidth = ctx.measureText("THE CHAT").width;
   ctx.fillStyle = "#ff3d7f";
-  ctx.fillText("?", 90 + brandWidth + 18, 150);
+  ctx.fillText("RECEIPT", 90 + brandWidth + 18, 150);
   ctx.fillStyle = "#e8ff5b"; ctx.font = "900 34px Arial"; ctx.fillText("VISIBLE-SIGNAL READ", 90, 300);
   ctx.fillStyle = "#ffffff"; ctx.font = "900 112px Arial";
   const lines = wrapText(ctx, result.label, 830); lines.forEach((line, index) => ctx.fillText(line, 90, 450 + index * 118));
   const numberY = 760 + (lines.length - 1) * 118;
   ctx.font = "900 430px Arial"; ctx.letterSpacing = "-18px"; ctx.fillText(String(result.index), 70, numberY + 360); ctx.letterSpacing = "0px";
   ctx.fillStyle = "rgba(255,255,255,.48)"; ctx.font = "900 62px Arial"; ctx.fillText("/100", 725, numberY + 340);
-  ctx.fillStyle = "rgba(255,255,255,.56)"; ctx.font = "900 31px Arial"; ctx.fillText("COOKED INDEX", 90, numberY + 430);
+  ctx.fillStyle = "rgba(255,255,255,.56)"; ctx.font = "900 31px Arial"; ctx.fillText("MIXED-SIGNAL INDEX", 90, numberY + 430);
   ctx.fillStyle = "#e8ff5b"; ctx.fillRect(90, numberY + 520, 14, 205);
   ctx.fillStyle = "#ffffff"; ctx.font = "700 49px Arial"; wrapText(ctx, result.phrase, 760).slice(0, 3).forEach((line, index) => ctx.fillText(line, 145, numberY + 580 + index * 62));
   const qr = await QRCode.toDataURL(url, { width: 240, margin: 2, color: { dark: "#18181a", light: "#ffffff" } });
   const image = await loadImage(qr); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.roundRect(750, 1535, 250, 250, 26); ctx.fill(); ctx.drawImage(image, 765, 1550, 220, 220);
-  ctx.fillStyle = "rgba(255,255,255,.86)"; ctx.font = "700 28px Arial"; ctx.fillText("Try yours at Cooked?", 90, 1630); ctx.fillStyle = "rgba(255,255,255,.62)"; ctx.font = "600 25px Arial"; ctx.fillText("For fun · based on visible messages", 90, 1760);
+  ctx.fillStyle = "rgba(255,255,255,.86)"; ctx.font = "700 28px Arial"; ctx.fillText("Get yours at thechatreceipt.com", 90, 1630); ctx.fillStyle = "rgba(255,255,255,.62)"; ctx.font = "600 25px Arial"; ctx.fillText("For fun · based on visible messages", 90, 1760);
   return canvas.toDataURL("image/png");
 }
 
