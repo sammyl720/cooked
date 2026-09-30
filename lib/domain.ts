@@ -11,6 +11,36 @@ export type Dimension = {
   key: DimensionKey;
   label: string;
   value: number;
+  evidence: string;
+  interpretation: string;
+};
+
+export type ReadConfidence = "High" | "Medium" | "Guarded";
+export type ReplyTone = "Direct" | "Casual" | "Playful";
+
+export type ReadDetails = {
+  confidence: {
+    label: ReadConfidence;
+    detail: string;
+  };
+  strongestSignal: {
+    title: string;
+    detail: string;
+    quote: string;
+  };
+  uncertainty: {
+    title: string;
+    detail: string;
+    quote?: string;
+  };
+  nextMove: {
+    title: string;
+    detail: string;
+  };
+  replyIdeas: Array<{
+    tone: ReplyTone;
+    text: string;
+  }>;
 };
 
 export type ScoredResult = {
@@ -19,6 +49,7 @@ export type ScoredResult = {
   vibe: Vibe;
   dimensions: Dimension[];
   phrase: string;
+  read: ReadDetails;
   resultVersion: "cooked_v1";
   disclaimer: string;
   proof: string;

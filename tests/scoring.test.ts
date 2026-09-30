@@ -42,6 +42,24 @@ test("explicit plan and maybe-sometime phrasing stay distinct", () => {
   assert.equal(phraseFor("Mixed signals", "warm", .08), "The vibe is warm, but the plan is still vague.");
 });
 
+test("scored reads explain the evidence and recommend a next move", () => {
+  const planned = evaluation({
+    reciprocity: score(3),
+    warmth: score(3),
+    follow_through: score(4),
+    clarity: score(4),
+    explicit_next_step: { type: "noul", noul: .9 },
+  });
+  const outcome = resultFromEvaluation(planned, turns);
+  assert.equal(outcome.status, "scored");
+  if (outcome.status !== "scored") return;
+  assert.equal(outcome.result.dimensions.length, 4);
+  assert.ok(outcome.result.dimensions.every((dimension) => dimension.evidence.length > 0 && dimension.interpretation.length > 0));
+  assert.match(outcome.result.read.strongestSignal.quote, /Perfect|after seven/i);
+  assert.match(outcome.result.read.nextMove.title, /Confirm the details/i);
+  assert.deepEqual(outcome.result.read.replyIdeas.map((reply) => reply.tone), ["Direct", "Casual", "Playful"]);
+});
+
 test("unclear, low-confidence, and thin inputs never receive a score", () => {
   const unclear = evaluation({ vibe: { type: "choice", choice: "unclear", confidence: .8, probabilities: { ...vibeProbabilities, warm: 0, unclear: 1 } } });
   assert.equal(resultFromEvaluation(unclear, turns).status, "insufficient");

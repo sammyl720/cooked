@@ -1,9 +1,9 @@
 const EVENTS = new Set([
   "landing_view", "input_started", "ocr_completed", "analysis_started", "analysis_scored", "analysis_insufficient",
   "share_card_downloaded", "native_share_opened", "challenge_created", "challenge_opened", "challenge_completed", "feedback",
-  "checkout_started", "purchase_completed",
+  "checkout_started", "purchase_completed", "reply_copied",
 ]);
-const ALLOWED_PROPERTIES = new Set(["source", "success", "latencyBucket", "resultVersion", "scoreBucket", "reaction", "packCredits"]);
+const ALLOWED_PROPERTIES = new Set(["source", "success", "latencyBucket", "resultVersion", "scoreBucket", "reaction", "packCredits", "tone"]);
 
 export async function POST(request: Request) {
   try {

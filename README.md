@@ -8,6 +8,7 @@ The Chat Receipt is a mobile-first dating-chat game: paste a two-person conversa
 - PNG, JPEG, and WebP validation plus an optional OpenAI vision OCR adapter
 - TypeSafe AI Jev evaluation using `@typesafe-ai/sdk` and `jev-latest`
 - Versioned `cooked_v1` scoring retained for challenge compatibility, deterministic phrases, runtime response validation, and tests
+- Evidence-backed result explanations with exact-message quotes, confidence framing, a recommended next move, and optional tone-based reply starters
 - Insufficient-evidence and safety suppression paths
 - 1080 × 1920 transcript-free PNG cards with native share/download fallbacks
 - Signed, 30-day, score-only challenges backed by D1
@@ -70,7 +71,7 @@ npx tsc --noEmit
 npm run build
 ```
 
-The automated policy suite covers score thresholds, ambiguity/low-confidence suppression, malformed and partial Jev responses, explicit-plan phrasing versus “maybe sometime,” paste parsing, and monologue rejection.
+The automated policy suite covers score thresholds, ambiguity/low-confidence suppression, malformed and partial Jev responses, evidence-backed guidance, explicit-plan phrasing versus “maybe sometime,” paste parsing, and monologue rejection.
 
 ## Demo conversation
 

@@ -4,10 +4,11 @@ import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown, ArrowUp, Camera, Check, CheckCircle2, ChevronLeft, CircleAlert, Copy, CreditCard, Download, GripVertical,
-  Image as ImageIcon, Link2, LoaderCircle, LockKeyhole, MessageCircleMore, Plus, RotateCcw,
-  Send, Share2, ShieldCheck, Sparkles, Trash2, Upload, X, Zap,
+  Eye, Image as ImageIcon, Link2, LoaderCircle, LockKeyhole, MessageCircleMore, Plus, Quote, RotateCcw,
+  Send, Share2, ShieldCheck, Sparkles, Target, Trash2, Upload, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -356,6 +357,14 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
     emit("feedback", { reaction, resultVersion: result.resultVersion, scoreBucket: Math.floor(result.index / 25) * 25 });
   };
 
+  const copyReply = async (tone: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${tone} reply copied`);
+      emit("reply_copied", { tone });
+    } catch { toast.error("Select and copy the reply instead."); }
+  };
+
   const content = (() => {
     if (screen === "input") return (
       <section className="relative mx-auto grid w-full max-w-6xl gap-8 px-5 pb-16 pt-4 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-12">
@@ -467,6 +476,73 @@ export function CookedApp({ challengeToken }: { challengeToken?: string }) {
               <div className="relative"><p className="text-xs font-black uppercase tracking-[.18em] text-lime">Your chat receipt</p><h1 id="result-heading" className="mt-4 max-w-lg text-5xl font-black leading-[.9] tracking-[-.055em] sm:text-7xl">{result.label}</h1><div className="mt-8 flex items-baseline gap-2"><span className="text-[clamp(6rem,23vw,10rem)] font-black leading-none tracking-[-.09em]">{result.index}</span><span className="text-2xl font-black text-white/55">/100</span></div><p className="-mt-1 text-sm font-black uppercase tracking-[.14em] text-white/60">Mixed-Signal Index</p><p className="mt-6 max-w-lg border-l-4 border-lime pl-4 text-xl font-bold leading-snug">{result.phrase}</p></div>
               <div className="relative mt-9 space-y-5">{result.dimensions.map((dimension) => <div key={dimension.key}><div className="mb-2 flex items-center justify-between text-sm font-bold"><span>{dimension.label}</span><span>{dimension.value.toFixed(1)}/4</span></div><div className="h-3 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-lime" style={{ width: `${dimension.value / 4 * 100}%` }} /></div></div>)}</div>
               <p className="relative mt-8 text-sm text-white/60">{result.disclaimer}</p>{result.demo && <p className="relative mt-4 rounded-xl border border-lime/40 bg-lime/10 p-3 text-sm font-bold text-lime">Demo scoring is active. Add TYPESAFE_API_KEY for a live Jev result.</p>}
+            </article>
+            <article className="mt-7 overflow-hidden rounded-[2rem] border-2 border-ink bg-white shadow-[7px_7px_0_var(--ink)]">
+              <div className="flex flex-col gap-3 border-b-2 border-ink bg-lime px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div><p className="text-xs font-black uppercase tracking-[.14em]">Evidence, not mind reading</p><h2 className="mt-1 text-2xl font-black tracking-tight">Why this score?</h2></div>
+                <span className="w-fit rounded-full border-2 border-ink bg-white px-3 py-1.5 text-sm font-black">{result.read.confidence.label} confidence</span>
+              </div>
+              <div className="p-5 sm:p-6">
+                <p className="text-sm font-semibold text-muted-foreground">{result.read.confidence.detail}</p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <section className="rounded-2xl border-2 border-ink bg-canvas p-4">
+                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.12em]"><Eye className="size-4 text-punch" /> Most telling</p>
+                    <h3 className="mt-3 text-lg font-black leading-tight">{result.read.strongestSignal.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{result.read.strongestSignal.detail}</p>
+                    <blockquote className="mt-4 border-l-4 border-punch pl-3 text-sm font-bold leading-relaxed">“{result.read.strongestSignal.quote}”</blockquote>
+                  </section>
+                  <section className="rounded-2xl border-2 border-ink/20 bg-white p-4">
+                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.12em]"><Quote className="size-4 text-punch" /> Keep in mind</p>
+                    <h3 className="mt-3 text-lg font-black leading-tight">{result.read.uncertainty.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{result.read.uncertainty.detail}</p>
+                    {result.read.uncertainty.quote && <blockquote className="mt-4 border-l-4 border-ink/20 pl-3 text-sm font-bold leading-relaxed">“{result.read.uncertainty.quote}”</blockquote>}
+                  </section>
+                </div>
+                <Accordion type="single" collapsible className="mt-5 rounded-2xl border-2 border-ink/15 px-4">
+                  <AccordionItem value="dimensions">
+                    <AccordionTrigger className="text-base font-black hover:no-underline">See the evidence for all four dimensions</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {result.dimensions.map((dimension) => (
+                          <div key={dimension.key} className="rounded-xl bg-canvas p-4">
+                            <div className="flex items-center justify-between gap-3"><h3 className="font-black">{dimension.label}</h3><span className="rounded-full bg-ink px-2.5 py-1 text-xs font-black text-white">{dimension.value.toFixed(1)}/4</span></div>
+                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{dimension.interpretation}</p>
+                            <p className="mt-3 text-sm font-bold">“{dimension.evidence}”</p>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+            </article>
+            <article className="mt-7 overflow-hidden rounded-[2rem] border-2 border-ink bg-white shadow-[7px_7px_0_var(--punch)]">
+              <div className="bg-ink p-5 text-white sm:p-6">
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em] text-lime"><Target className="size-4" /> Best next move</p>
+                <h2 className="mt-3 text-2xl font-black leading-tight sm:text-3xl">{result.read.nextMove.title}</h2>
+                <p className="mt-3 max-w-2xl leading-relaxed text-white/70">{result.read.nextMove.detail}</p>
+              </div>
+              <Accordion type="single" collapsible className="px-5 sm:px-6">
+                <AccordionItem value="reply-help">
+                  <AccordionTrigger className="text-base font-black hover:no-underline">Want help phrasing it? <span className="ml-auto mr-2 text-xs font-bold text-muted-foreground">Optional</span></AccordionTrigger>
+                  <AccordionContent>
+                    <Tabs defaultValue="Casual" className="pb-2">
+                      <TabsList className="grid h-11 w-full grid-cols-3 bg-canvas">
+                        {result.read.replyIdeas.map((reply) => <TabsTrigger key={reply.tone} value={reply.tone} className="h-9 font-black">{reply.tone}</TabsTrigger>)}
+                      </TabsList>
+                      {result.read.replyIdeas.map((reply) => (
+                        <TabsContent key={reply.tone} value={reply.tone} className="mt-3">
+                          <div className="flex flex-col gap-3 rounded-2xl border-2 border-ink/15 bg-canvas p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-lg font-bold leading-relaxed">“{reply.text}”</p>
+                            <Button variant="outline" className="shrink-0 border-2 border-ink bg-white font-black" onClick={() => copyReply(reply.tone, reply.text)}><Copy /> Copy</Button>
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Use your own voice. These are starting points, not a script you have to send.</p>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </article>
             {challenge && <div className="mt-7 rounded-2xl border-2 border-ink bg-white p-5 shadow-[5px_5px_0_var(--ink)]"><p className="text-xs font-black uppercase tracking-[.14em]">Challenge result · lower wins</p><div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center"><div><p className="text-sm font-bold text-muted-foreground">Them</p><p className="text-4xl font-black">{challenge.index}</p></div><span className="text-xl font-black">vs</span><div><p className="text-sm font-bold text-muted-foreground">You</p><p className="text-4xl font-black text-punch">{result.index}</p></div></div><p className="mt-4 text-center font-black">{result.index < challenge.index ? "You beat their index." : result.index > challenge.index ? "They take this round." : "A perfect tie."}</p></div>}
             <div className="mt-7 flex flex-col gap-3 sm:flex-row"><Button className="h-12 flex-1 border-2 border-ink bg-lime font-black text-ink shadow-[3px_3px_0_var(--ink)] hover:bg-lime/80" onClick={shareCard}><Share2 /> Share card</Button><Button variant="outline" className="h-12 flex-1 border-2 border-ink font-black" onClick={downloadCard}><Download /> Save PNG</Button><Button variant="outline" className="h-12 border-2 border-ink font-black" onClick={reset}>Try another</Button></div>
